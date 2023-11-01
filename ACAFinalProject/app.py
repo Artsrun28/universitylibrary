@@ -7,10 +7,11 @@ from models.books import Book
 from models.user import User
 from login import login_required
 
+# Flask app
 app = Flask(__name__, static_url_path='/media')
 app.config.from_object("config.AppConfig")
 
-
+# Context processor to inject user data
 @app.context_processor
 def inject_data():
     user_id = session.get("user")
@@ -19,7 +20,7 @@ def inject_data():
         user = User.get(user_id)
     return {"user": user}
 
-
+# Handles user login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
@@ -29,19 +30,19 @@ def login():
         hashed_password = User.hash_password(form.username.data, form.password.data)
         if not user or user.password != hashed_password:
             form.username.errors.append('Invalid credentials')
-            render_template("login.html", form=form)
+            render_template("login.html", form=form)  # Return the template if credentials are invalid
         session['user'] = user.id
         return_url = request.args.get("next")
-        return redirect(return_url if return_url else "/")
+        return redirect(return_url if return_url else "/")  # Redirect to home or the previous page
     return render_template(template_name_or_list="login.html", form=form)
 
-
+# Logout
 @app.route('/logout')
 def logout():
     session['user'] = None
     return redirect('/login')
 
-
+# Handles user registration
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegisterForm()
@@ -51,23 +52,23 @@ def register():
         return redirect("/our-students")
     return render_template(template_name_or_list="register.html", form=form)
 
-
+# Home route
 @app.route('/')
 def home():
     return render_template(template_name_or_list='home.html')
 
-
+# About route
 @app.route('/about')
 def about():
     return render_template(template_name_or_list='about.html')
 
-
+# Displays available books
 @app.route('/books')
 def books():
     books = Book.select()
     return render_template(template_name_or_list='books.html', books=books)
 
-# Dynamic routing
+# Dynamic routing for book details
 @app.route('/books/<int:book_id>')
 def books_details(book_id):
     try:
@@ -78,10 +79,11 @@ def books_details(book_id):
 
 #app.route decorators methods by default are GET, if you need POST, you need to define methode
 @app.route('/books/new', methods=['GET', 'POST'])
-@login_required
+@login_required  # Requires login
 def new_book():
     create_book_form = CreateBookForm()
     if create_book_form.validate_on_submit():
+        # Create a new book and save it
         book = Book(
             book_name=create_book_form.book_name.data,
             author_name=create_book_form.author_name.data,
@@ -89,10 +91,10 @@ def new_book():
             book_copy=create_book_form.book_copy.data,
         )
         book.save()
-        return redirect('/books')
+        return redirect('/books')  # Redirect to books page after adding a new book
     return render_template(template_name_or_list="new_book.html", form=create_book_form)
 
-
+# Update book details
 @app.route('/book_update', methods=['POST'])
 def book_update():
     book_id = request.form.get('book_update_id')
@@ -108,10 +110,10 @@ def book_update():
             book.release_year = new_release_year
             book.save()
         except User.DoesNotExist:
-            pass  # Book not found
+            render_template(template_name_or_list='404.html'), 404
     return redirect("/books")
 
-
+# Delete book
 @app.route('/delete-book', methods=['POST'])
 def delete_book():
     book_id = request.form.get('book_id')
@@ -120,16 +122,16 @@ def delete_book():
             book = Book.get(Book.id == book_id)
             book.delete_instance()
         except Book.DoesNotExist:
-            pass  # Book not found
+            render_template(template_name_or_list='404.html'), 404
     return redirect("/books")
 
-
+# Route to display students
 @app.route('/our-students')
 def students():
     students = User.select()
     return render_template(template_name_or_list='students.html', students=students)
 
-# Dynamic routing
+# Dynamic routing for student details
 @app.route('/students/<int:user_id>')
 def student_details(user_id):
     try:
@@ -145,7 +147,7 @@ def user_update():
     new_username = request.form.get('new_username')
     new_full_name = request.form.get('new_full_name')
     new_email = request.form.get('new_email')
-
+    # Update user details
     if user_id and new_full_name and new_email and new_username:
         try:
             user = User.get(User.id == user_id)
@@ -154,7 +156,7 @@ def user_update():
             user.email = new_email
             user.save()
         except User.DoesNotExist:
-            pass  # User not found
+            return render_template(template_name_or_list="404.html"), 404
     return redirect("/our-students")
 
 
@@ -166,7 +168,7 @@ def delete_user():
             user = User.get(User.id == user_id)
             user.delete_instance()
         except User.DoesNotExist:
-            pass  # User not found
+            return render_template(template_name_or_list="404.html"), 404
     return redirect("/our-students")
 
 
